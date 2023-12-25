@@ -260,3 +260,6 @@ docker run -d -p 3000:3000 \
 ## 开源协议
 
 [MIT](https://opensource.org/license/mit/)
+
+## 源地址
+`https://github.com/Hk-Gosuto/ChatGPT-Next-Web-LangChain`
