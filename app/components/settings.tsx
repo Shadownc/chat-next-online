@@ -695,7 +695,9 @@ export function Settings() {
             >
               <div
                 className={styles.avatar}
-                onClick={() => setShowEmojiPicker(true)}
+                onClick={() => {
+                  setShowEmojiPicker(!showEmojiPicker);
+                }}
               >
                 <Avatar avatar={config.avatar} />
               </div>
@@ -1076,19 +1078,19 @@ export function Settings() {
                       >
                         <input
                           type="text"
-                          value={accessStore.googleBaseUrl}
+                          value={accessStore.googleUrl}
                           placeholder={Google.ExampleEndpoint}
                           onChange={(e) =>
                             accessStore.update(
                               (access) =>
-                                (access.googleBaseUrl = e.currentTarget.value),
+                                (access.googleUrl = e.currentTarget.value),
                             )
                           }
                         ></input>
                       </ListItem>
                       <ListItem
-                        title={Locale.Settings.Access.Azure.ApiKey.Title}
-                        subTitle={Locale.Settings.Access.Azure.ApiKey.SubTitle}
+                        title={Locale.Settings.Access.Google.ApiKey.Title}
+                        subTitle={Locale.Settings.Access.Google.ApiKey.SubTitle}
                       >
                         <PasswordInput
                           value={accessStore.googleApiKey}
@@ -1105,9 +1107,9 @@ export function Settings() {
                         />
                       </ListItem>
                       <ListItem
-                        title={Locale.Settings.Access.Google.ApiVerion.Title}
+                        title={Locale.Settings.Access.Google.ApiVersion.Title}
                         subTitle={
-                          Locale.Settings.Access.Google.ApiVerion.SubTitle
+                          Locale.Settings.Access.Google.ApiVersion.SubTitle
                         }
                       >
                         <input
