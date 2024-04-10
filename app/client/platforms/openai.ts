@@ -12,6 +12,7 @@ import { useAccessStore, useAppConfig, useChatStore } from "@/app/store";
 import {
   AgentChatOptions,
   ChatOptions,
+  CreateRAGStoreOptions,
   getHeaders,
   LLMApi,
   LLMModel,
@@ -236,6 +237,9 @@ export class ChatGPTApi implements LLMApi {
           if (finished || controller.signal.aborted) {
             responseText += remainText;
             console.log("[Response Animation] finished");
+            if (responseText?.length === 0) {
+              options.onError?.(new Error("empty response from server"));
+            }
             return;
           }
 
@@ -309,19 +313,31 @@ export class ChatGPTApi implements LLMApi {
             }
             const text = msg.data;
             try {
-              const json = JSON.parse(text) as {
-                choices: Array<{
-                  delta: {
-                    content: string;
-                  };
-                }>;
-              };
-              const delta = json.choices[0]?.delta?.content;
+              const json = JSON.parse(text);
+              const choices = json.choices as Array<{
+                delta: { content: string };
+              }>;
+              const delta = choices[0]?.delta?.content;
+              const textmoderation = json?.prompt_filter_results;
+
               if (delta) {
                 remainText += delta;
               }
+
+              if (
+                textmoderation &&
+                textmoderation.length > 0 &&
+                ServiceProvider.Azure
+              ) {
+                const contentFilterResults =
+                  textmoderation[0]?.content_filter_results;
+                console.log(
+                  `[${ServiceProvider.Azure}] [Text Moderation] flagged categories result:`,
+                  contentFilterResults,
+                );
+              }
             } catch (e) {
-              console.error("[Request] parse error", text);
+              console.error("[Request] parse error", text, msg);
             }
           },
           onclose() {
@@ -347,6 +363,34 @@ export class ChatGPTApi implements LLMApi {
     }
   }
 
+  async createRAGStore(options: CreateRAGStoreOptions): Promise<void> {
+    try {
+      const accessStore = useAccessStore.getState();
+      const isAzure = accessStore.provider === ServiceProvider.Azure;
+      let baseUrl = isAzure ? accessStore.azureUrl : accessStore.openaiUrl;
+      const requestPayload = {
+        sessionId: options.chatSessionId,
+        fileInfos: options.fileInfos,
+        baseUrl: baseUrl,
+      };
+      console.log("[Request] rag store payload: ", requestPayload);
+      const controller = new AbortController();
+      options.onController?.(controller);
+      let path = "/api/langchain/rag/store";
+      const chatPayload = {
+        method: "POST",
+        body: JSON.stringify(requestPayload),
+        signal: controller.signal,
+        headers: getHeaders(),
+      };
+      const res = await fetch(path, chatPayload);
+      if (res.status !== 200) throw new Error(await res.text());
+    } catch (e) {
+      console.log("[Request] failed to make a chat reqeust", e);
+      options.onError?.(e as Error);
+    }
+  }
+
   async toolAgentChat(options: AgentChatOptions) {
     const messages = options.messages.map((v) => ({
       role: v.role,
@@ -364,6 +408,7 @@ export class ChatGPTApi implements LLMApi {
     const isAzure = accessStore.provider === ServiceProvider.Azure;
     let baseUrl = isAzure ? accessStore.azureUrl : accessStore.openaiUrl;
     const requestPayload = {
+      chatSessionId: options.chatSessionId,
       messages,
       isAzure,
       azureApiVersion: accessStore.azureApiVersion,

@@ -3,6 +3,7 @@ import { showToast } from "./components/ui-lib";
 import Locale from "./locales";
 import { RequestMessage } from "./client/api";
 import { DEFAULT_MODELS } from "./constant";
+import { useAccessStore } from "./store";
 
 export function trimTopic(topic: string) {
   // Fix an issue where double quotes still show in the Indonesian language
@@ -59,10 +60,7 @@ export async function downloadAs(text: string, filename: string) {
 
     if (result !== null) {
       try {
-        await window.__TAURI__.fs.writeTextFile(
-          result,
-          text
-        );
+        await window.__TAURI__.fs.writeTextFile(result, text);
         showToast(Locale.Download.Success);
       } catch (error) {
         showToast(Locale.Download.Failed);
@@ -294,9 +292,14 @@ export function getMessageImages(message: RequestMessage): string[] {
 }
 
 export function isVisionModel(model: string) {
-  return (
-    // model.startsWith("gpt-4-vision") ||
-    // model.startsWith("gemini-pro-vision") ||
-    model.includes("vision")
+  // Note: This is a better way using the TypeScript feature instead of `&&` or `||` (ts v5.5.0-dev.20240314 I've been using)
+  const visionKeywords = ["vision", "claude-3"];
+
+  return visionKeywords.some((keyword) => model.includes(keyword));
+}
+
+export function isSupportRAGModel(modelName: string) {
+  return DEFAULT_MODELS.filter((model) => model.provider.id === "openai").some(
+    (model) => model.name === modelName,
   );
 }
